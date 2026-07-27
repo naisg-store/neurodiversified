@@ -9,6 +9,21 @@
 (function () {
   "use strict";
 
+  /* ---------------- Donate link ----------------
+     Set your real donation URL ONCE here (Stripe Payment Link, Zeffy, etc).
+     Every button/link with data-donate-link on any page will pick it up
+     automatically — you never have to hunt through the HTML files. */
+  var DONATE_URL = "https://REPLACE-WITH-YOUR-DONATE-URL";
+
+  document.querySelectorAll("[data-donate-link]").forEach(function (el) {
+    el.href = DONATE_URL;
+  });
+
+  /* ---------------- Waitlist form (Web3Forms) ----------------
+     Free, no backend needed. Get an access key at https://web3forms.com
+     (just enter an email, no account setup) and paste it below. */
+  var WEB3FORMS_ACCESS_KEY = "REPLACE-WITH-YOUR-WEB3FORMS-ACCESS-KEY";
+
   /* ---------------- Theme toggle ---------------- */
   var root = document.documentElement;
   var THEME_KEY = "neurodiversified-theme";
@@ -73,17 +88,45 @@
     revealEls.forEach(function (el) { el.classList.add("is-visible"); });
   }
 
-  /* ---------------- Newsletter form (placeholder) ---------------- */
+  /* ---------------- Waitlist / newsletter form (Web3Forms) ---------------- */
   document.addEventListener("submit", function (e) {
     var form = e.target.closest("[data-newsletter-form]");
     if (!form) return;
-    // Placeholder behavior only — replace the form's `action` attribute with
-    // your Formspree/ConvertKit endpoint and remove this preventDefault
-    // once that's wired up.
     e.preventDefault();
+
     var note = form.querySelector("[data-form-status]");
-    if (note) {
-      note.textContent = "Thanks — this form isn't connected yet, but your email would be saved here.";
-    }
+    var emailInput = form.querySelector('input[type="email"]');
+    var submitBtn = form.querySelector('button[type="submit"]');
+    if (!emailInput || !emailInput.value) return;
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (note) note.textContent = "Sending…";
+
+    var formData = new FormData();
+    formData.append("access_key", WEB3FORMS_ACCESS_KEY);
+    formData.append("email", emailInput.value);
+    formData.append("subject", "New waitlist signup — neurodiversified");
+    formData.append("from_name", "neurodiversified site");
+
+    fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: formData
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          if (note) note.textContent = "Thanks — you're on the list. We'll be in touch as we launch.";
+          form.reset();
+        } else {
+          if (note) note.textContent = "Something went wrong — please try again, or email hello@neurodiversified.org directly.";
+        }
+      })
+      .catch(function () {
+        if (note) note.textContent = "Something went wrong — please try again, or email hello@neurodiversified.org directly.";
+      })
+      .finally(function () {
+        if (submitBtn) submitBtn.disabled = false;
+      });
   });
 })();
